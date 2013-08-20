@@ -1,10 +1,10 @@
 ETEXT TODO
 - open_pressed needs the option to allow the user to save the current file if unsaved
-- need working is_saved function
+- Need to add * to title when file is unsaved
 - option to change font size and style
 - add keybindings
 - closing single instance should not close all elementary applications or other instances
 - allow settings to be saved to file and read on startup
-- UI improvements (Currently very Ugly)
+- UI improvements (Currently very Ugly) (Possibly file tabs?)
 	- Cursor does not show in textbox
 - Line numbers (can wait until 1.1)

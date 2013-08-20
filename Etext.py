@@ -7,11 +7,20 @@
 import elementary
 import evas
 import sys
+import os
 
 def application_start(fileName):
 	# Create the window title and boarder
 	window = elementary.StandardWindow("Etext", "Etext - Untitled")
 	window.show()
+
+	# Add window Icon
+	icon = elementary.Image(window)
+	icon.size_hint_weight_set(evas.EVAS_HINT_EXPAND, evas.EVAS_HINT_EXPAND)
+	icon.size_hint_align_set(evas.EVAS_HINT_FILL, evas.EVAS_HINT_FILL)
+	icon.file_set('/home/tyler/Special Projects/E code/Etext.png')
+	icon.show()
+	#window.icon_object_set(icon)
 
 	# creates textbox to hold text
 	textbox = elementary.Entry(window)
@@ -31,7 +40,7 @@ def application_start(fileName):
 
 	# saved state of the file
 	global file_is_saved
-	file_is_saved = False
+	file_is_saved = True
 
 	# create a top menu (toolbar)
 	# open button
@@ -89,7 +98,7 @@ def application_start(fileName):
 
 	# Create a box to hold everything
 	full_package = elementary.Box(window)
-	full_package.padding_set(2,2)
+	full_package.padding_set(1,1)
 	full_package.size_hint_weight_set(evas.EVAS_HINT_EXPAND, evas.EVAS_HINT_EXPAND)
 	full_package.size_hint_align_set(evas.EVAS_HINT_FILL, evas.EVAS_HINT_FILL)
 
@@ -107,9 +116,11 @@ def application_start(fileName):
 # the chosen file. It should make sure that the current file has been saved.
 def open_pressed(open_button,file_selected,window1,textbox1):
 	# Look to make sure the current file has been saved
-	textbox1.file_set(file_selected,elementary.ELM_TEXT_FORMAT_PLAIN_UTF8)
-	window1.title_set("Etext - "+file_selected)
-	file_is_saved = True
+	if file_selected != None:
+		textbox1.file_set(file_selected,elementary.ELM_TEXT_FORMAT_PLAIN_UTF8)
+		window1.title_set("Etext - "+file_selected)
+		global file_is_saved
+		file_is_saved = True
 
 # new_pressed(Button,window,textbox)
 # starts a new instance of Etext
@@ -134,6 +145,7 @@ def save_pressed(save_button,window1,textbox1):
 		saveas_popup.show()
 	else:
 		argument2.file_save()
+		global file_is_saved
 		file_is_saved = True
 
 # saveas_pressed(FileselectorButton,file_selected,textbox)
@@ -146,6 +158,7 @@ def saveas_pressed(saveas_button,file_selected,window1,textbox1):
 		textbox1.file_set(file_selected,elementary.ELM_TEXT_FORMAT_PLAIN_UTF8)
 		textbox1.entry_set(tmp_text)
 		textbox1.file_save()
+		global file_is_saved
 		file_is_saved = True
 		window1.title_set("Etext - "+file_selected)
 
@@ -162,7 +175,7 @@ def wordwrap_pressed(wordwrap_check,window1,textbox1):
 # Shows popup with very basic information
 def about_pressed(about_button,window1):
 	about_popup = elementary.Popup(window1)
-	about_popup.part_text_set("title,text","Etext v0.01")
+	about_popup.part_text_set("title,text","Etext v0.05")
 	about_popup.part_text_set("default","<b>The Enlightened Text Editor</b><ps>\
 										By: Tyler Bradbeer<ps><ps>\
 										Etext is licensed under the GNU GPL v2")
@@ -173,8 +186,8 @@ def about_pressed(about_button,window1):
 	about_popup.show()
 
 def file_saved(self,window1):
+	global file_is_saved
 	file_is_saved = False
-	print "You are here"
 
 # close_popup(button,popup)
 # simple function to close any popup
@@ -186,7 +199,7 @@ def close_popup(button,popup1):
 # if the current file has not been saved.
 def close_safely(self,window1,textbox1):
 	if file_is_saved:
-		close_nolook(window1)
+		close_nolook(self,window1)
 	else:
 		# Create popup
 		unsaved_popup = elementary.Popup(self)
