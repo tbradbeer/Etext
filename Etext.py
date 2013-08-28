@@ -10,6 +10,8 @@ import evas
 import sys
 import os
 
+version = 0.10
+
 def application_start(fileName):
 	# Create the window title and boarder
 	window = elementary.StandardWindow("Etext", "Etext - Untitled")
@@ -133,6 +135,8 @@ def new_pressed(new_button,window1,textbox1):
 	global file_is_saved
 	if not file_is_saved:
 		unsaved_popup(window1,textbox1,saveas_pressed)
+	else:
+		textbox1.clear()
 
 # save_pressed(Button,window,textbox)
 # saves the current textbox to file if the file has been specified if not warns
@@ -142,7 +146,8 @@ def save_pressed(save_button,window1,textbox1):
 	if temp == (None,0):
 		saveas_pressed(save_button,window1,textbox1)
 	else:
-		window1.file_save()
+		textbox1.file_save()
+		window1.title_set("Etext - "+temp)
 		global file_is_saved
 		file_is_saved = True
 
@@ -154,14 +159,16 @@ def saveas_pressed(saveas_button,window1,textbox1):
 # saveas_file(Junk,file_selected,window,textbox,file_win)
 # this function will go through the steps of saving the file 		
 def saveas_file(junk,file_selected,window1,textbox1,file_win):
-	open(file_selected,'w').close() # creates new file
-	tmp_text = textbox1.entry_get()
-	textbox1.file_set(file_selected,elementary.ELM_TEXT_FORMAT_PLAIN_UTF8)
-	textbox1.entry_set(tmp_text)
-	textbox1.file_save()
-	global file_is_saved
-	file_is_saved = True
-	window1.title_set("Etext - "+file_selected)
+	if file_selected != None:
+		open(file_selected,'w').close() # creates new file
+		tmp_text = textbox1.entry_get()
+		textbox1.file_set(file_selected,elementary.ELM_TEXT_FORMAT_PLAIN_UTF8)
+		textbox1.entry_set(tmp_text)
+		textbox1.file_save()
+		global file_is_saved
+		file_is_saved = True
+		window1.title_set("Etext - "+file_selected)
+	file_win.delete()
 
 # wordwrap_pressed(Check,window,textbox)
 # function toggles the state of wordwrap in the textbox
@@ -176,7 +183,7 @@ def wordwrap_pressed(wordwrap_check,window1,textbox1):
 # Shows pop-up with very basic information
 def about_pressed(about_button,window1):
 	about_popup = elementary.Popup(window1)
-	about_popup.part_text_set("title,text","Etext v0.05")
+	about_popup.part_text_set("title,text","Etext v"+str(version))
 	about_popup.part_text_set("default","<b>The Enlightened Text Editor</b><ps>\
 										By: Tyler Bradbeer<ps><ps>\
 										Etext is licensed under the GNU GPL v2")
@@ -208,7 +215,7 @@ def close_safely(self,window1,textbox1):
 	else:
 		unsaved_popup(window1,textbox1,close_nolook)
 
-# file_choser(window,textbox,save_mode <bool>)
+# file_choser(window,textbox,save_mode <bool>,function)
 # I wrote this because the FileselectorButton does not have enough options
 # it offers the same basic functions but has more options available 
 def file_chooser(window1,textbox1,save_mode,function):
