@@ -1,5 +1,6 @@
 #!/usr/bin/env python
-# Etext: the enlightend text editor
+#
+# Etext: the enlightened text editor
 # Written by Tyler Bradbeer
 # Etext is licensed under the GNU GPLv2
 
@@ -18,9 +19,9 @@ def application_start(fileName):
 	icon = elementary.Image(window)
 	icon.size_hint_weight_set(evas.EVAS_HINT_EXPAND, evas.EVAS_HINT_EXPAND)
 	icon.size_hint_align_set(evas.EVAS_HINT_FILL, evas.EVAS_HINT_FILL)
-	icon.file_set('/home/tyler/Special Projects/E code/Etext.png')
+	icon.file_set('Etext.png') # assumes image icon is in local dir, may need to change later
 	icon.show()
-	#window.icon_object_set(icon)
+	window.icon_object_set(icon.object_get())
 
 	# creates textbox to hold text
 	textbox = elementary.Entry(window)
@@ -44,12 +45,9 @@ def application_start(fileName):
 
 	# create a top menu (toolbar)
 	# open button
-	open_button = elementary.FileselectorButton(window)
+	open_button = elementary.Button(window)
 	open_button.text = "Open"
-	open_button.window_title_set("Open...")
-	open_button.expandable_set(False)
-	open_button.inwin_mode_set(True)
-	open_button.callback_file_chosen_add(open_pressed, window, textbox)
+	open_button.callback_pressed_add(open_pressed,window,textbox)
 	open_button.show()
 
 	# clears the editor
@@ -58,25 +56,25 @@ def application_start(fileName):
 	new_button.callback_pressed_add(new_pressed, window, textbox)
 	new_button.show()
 
-	saveas_button = elementary.FileselectorButton(window)
+	# Save As Button 
+	saveas_button = elementary.Button(window)
 	saveas_button.text = "Save As"
-	saveas_button.callback_file_chosen_add(saveas_pressed,window,textbox)
-	saveas_button.window_title_set("Save As...")
-	saveas_button.expandable_set(False)
-	saveas_button.inwin_mode_set(True)
-	saveas_button.is_save_set(True)
+	saveas_button.callback_pressed_add(saveas_pressed,window,textbox)
 	saveas_button.show()
 
+	# Save Button
 	save_button = elementary.Button(window)
 	save_button.text = "Save"
 	save_button.callback_pressed_add(save_pressed,window,textbox)
 	save_button.show()
 
+	# Word Wrap toggle
 	wordwrap_check = elementary.Check(window)
 	wordwrap_check.text = "Word Wrap"
 	wordwrap_check.callback_changed_add(wordwrap_pressed,window,textbox)
 	wordwrap_check.show()
 
+	# About Button
 	about_button = elementary.Button(window)
 	about_button.text = "About"
 	about_button.callback_pressed_add(about_pressed,window)
@@ -108,59 +106,62 @@ def application_start(fileName):
 	full_package.show()
 
 	window.resize_object_add(full_package)
-	window.resize(500,300)
+	window.resize(600,400)
 
+# open_pressed(Button,window,textbox)
+# makes sure the current file has been saved. If it has it will proceed
+# directly to the file_chooser widget
+def open_pressed(open_button,window1,textbox1):
+	global file_is_saved
+	if not file_is_saved:
+		unsaved_popup(window1,textbox1,saveas_pressed)
+	else:
+		file_chooser(window1,textbox1,False,open_file)
 
-# open_pressed(FileselectorButton,file_selected,window,textbox)
-# function will replace the contents of the textbox with those from
-# the chosen file. It should make sure that the current file has been saved.
-def open_pressed(open_button,file_selected,window1,textbox1):
-	# Look to make sure the current file has been saved
+# open_file(Crap,file_selected,window,textbox,file_win)
+# this takes the output form the file_chooser widget and displays the file 
+def open_file(Junk,file_selected,window1,textbox1,file_win):
 	if file_selected != None:
 		textbox1.file_set(file_selected,elementary.ELM_TEXT_FORMAT_PLAIN_UTF8)
 		window1.title_set("Etext - "+file_selected)
-		global file_is_saved
 		file_is_saved = True
+	file_win.delete()
 
 # new_pressed(Button,window,textbox)
-# starts a new instance of Etext
-def new_pressed(new_button,argument1,argument2):
-	application_start(None)
+# clears the current file and starts a new blank one
+def new_pressed(new_button,window1,textbox1):
+	global file_is_saved
+	if not file_is_saved:
+		unsaved_popup(window1,textbox1,saveas_pressed)
 
 # save_pressed(Button,window,textbox)
 # saves the current textbox to file if the file has been specified if not warns
 # user and instructs them to use the saveas button
 def save_pressed(save_button,window1,textbox1):
 	temp = textbox1.file_get();
-	# This ensures that the file is saved using the saveas function first
-	# This is not ideal and should be replaced with a function that calls save_as correctly
 	if temp == (None,0):
-		saveas_popup = elementary.Popup(window1)
-		saveas_popup.part_text_set("title,text","File Has No Name")
-		saveas_popup.part_text_set("default","File has never been saved please use Save As")
-		saveas_popup_button = elementary.Button(window1)
-		saveas_popup_button.text = "OK"
-		saveas_popup_button.callback_clicked_add(close_popup,saveas_popup)
-		saveas_popup.part_content_set("button1",saveas_popup_button)
-		saveas_popup.show()
+		saveas_pressed(save_button,window1,textbox1)
 	else:
-		argument2.file_save()
+		window1.file_save()
 		global file_is_saved
 		file_is_saved = True
 
-# saveas_pressed(FileselectorButton,file_selected,textbox)
-# function creates a new file with the name and place specified by the user
-# and then writes the contents of the textbox to this file
-def saveas_pressed(saveas_button,file_selected,window1,textbox1):
-	if file_selected != None:
-		tmp_file = open(file_selected,'w').close() # creates new file
-		tmp_text = textbox1.entry_get()
-		textbox1.file_set(file_selected,elementary.ELM_TEXT_FORMAT_PLAIN_UTF8)
-		textbox1.entry_set(tmp_text)
-		textbox1.file_save()
-		global file_is_saved
-		file_is_saved = True
-		window1.title_set("Etext - "+file_selected)
+# saveas_pressed(saveas_button,window,textbox)
+# this function is only used because I have to call it in 2 places
+def saveas_pressed(saveas_button,window1,textbox1):
+	file_chooser(window1,textbox1,True,saveas_file)
+
+# saveas_file(Junk,file_selected,window,textbox,file_win)
+# this function will go through the steps of saving the file 		
+def saveas_file(junk,file_selected,window1,textbox1,file_win):
+	open(file_selected,'w').close() # creates new file
+	tmp_text = textbox1.entry_get()
+	textbox1.file_set(file_selected,elementary.ELM_TEXT_FORMAT_PLAIN_UTF8)
+	textbox1.entry_set(tmp_text)
+	textbox1.file_save()
+	global file_is_saved
+	file_is_saved = True
+	window1.title_set("Etext - "+file_selected)
 
 # wordwrap_pressed(Check,window,textbox)
 # function toggles the state of wordwrap in the textbox
@@ -172,7 +173,7 @@ def wordwrap_pressed(wordwrap_check,window1,textbox1):
 		textbox1.line_wrap_set(False)
 
 # about_pressed(Button,window1)
-# Shows popup with very basic information
+# Shows pop-up with very basic information
 def about_pressed(about_button,window1):
 	about_popup = elementary.Popup(window1)
 	about_popup.part_text_set("title,text","Etext v0.05")
@@ -184,10 +185,14 @@ def about_pressed(about_button,window1):
 	close_button.callback_clicked_add(close_popup,about_popup)
 	about_popup.part_content_set("button1",close_button)
 	about_popup.show()
-
+	
+# Simple function for changing the save state of the file
 def file_saved(self,window1):
 	global file_is_saved
 	file_is_saved = False
+	temp = window1.title_get()
+	if not temp[0] == '*':
+		window1.title_set('*'+temp)
 
 # close_popup(button,popup)
 # simple function to close any popup
@@ -201,41 +206,59 @@ def close_safely(self,window1,textbox1):
 	if file_is_saved:
 		close_nolook(self,window1)
 	else:
-		# Create popup
-		unsaved_popup = elementary.Popup(self)
-		unsaved_popup.part_text_set("title,text","File Unsaved!")
-		unsaved_popup.part_text_set("default","This file has not been saved what would you like to do?")
-		# Close without saving button
-		clc_no_save_btt = elementary.Button(self)
-		clc_no_save_btt.text = "Close Without Saving"
-		clc_no_save_btt.callback_clicked_add(close_nolook,window1)
-		# Save the file and then close button
-		clc_save_btt = elementary.FileselectorButton(self)
-		clc_save_btt.expandable_set(False)
-		clc_save_btt.inwin_mode_set(True)
-		clc_save_btt.is_save_set(True)
-		if textbox1.file_get()[0] != None:
-			clc_save_btt.path_set(textbox1.file_get()[0])
-		#clc_save_btt.callback_file_chosen_add()
-		clc_save_btt.text = "Save File"
-		# cancel close request
-		cancel_btt = elementary.Button(self)
-		cancel_btt.text = "Cancel"
-		cancel_btt.callback_clicked_add(close_popup,unsaved_popup)
-		# add buttons to popup
-		unsaved_popup.part_content_set("button1",clc_no_save_btt)
-		unsaved_popup.part_content_set("button2",clc_save_btt)
-		unsaved_popup.part_content_set("button3",cancel_btt)
-		unsaved_popup.show()
+		unsaved_popup(window1,textbox1,close_nolook)
+
+# file_choser(window,textbox,save_mode <bool>)
+# I wrote this because the FileselectorButton does not have enough options
+# it offers the same basic functions but has more options available 
+def file_chooser(window1,textbox1,save_mode,function):
+	file_win = elementary.InnerWindow(window1)
+	file_stuff = elementary.Fileselector(file_win)
+	file_stuff.expandable_set(False)
+	file_stuff.is_save_set(save_mode)
+	file_stuff.buttons_ok_cancel_set(True)
+	file_stuff.callback_done_add(function,window1,textbox1,file_win)
+	file_stuff.path_set(os.getcwd())
+	file_stuff.show()
+	file_win.content_set(file_stuff)
+	file_win.show()
+
+# unsaved_popup(window,textbox,function)
+#produces a pop-up which provides options on what to do because the file has not been saved 
+def unsaved_popup(window1,textbox1,function1):
+	# Create popup
+	unsaved_popup = elementary.Popup(window1)
+	unsaved_popup.part_text_set("title,text","File Unsaved!")
+	unsaved_popup.part_text_set("default","The current file has not been saved.<ps> what would you like to do?")
+	# Close without saving button
+	clc_no_save_btt = elementary.Button(window1)
+	clc_no_save_btt.text = "Close Without Saving"
+	clc_no_save_btt.callback_clicked_add(function1,window1)
+	# Save the file and then close button
+	clc_save_btt = elementary.FileselectorButton(window1)
+	clc_save_btt.expandable_set(False)
+	clc_save_btt.inwin_mode_set(True)
+	clc_save_btt.is_save_set(True)
+	if textbox1.file_get()[0] != None:
+		clc_save_btt.path_set(textbox1.file_get()[0])
+	clc_save_btt.callback_file_chosen_add(saveas_file,None,window1,textbox1)
+	clc_save_btt.text = "Save File"
+	# cancel close request
+	cancel_btt = elementary.Button(window1)
+	cancel_btt.text = "Cancel"
+	cancel_btt.callback_clicked_add(close_popup,unsaved_popup)
+	# add buttons to popup
+	unsaved_popup.part_content_set("button1",clc_no_save_btt)
+	unsaved_popup.part_content_set("button2",clc_save_btt)
+	unsaved_popup.part_content_set("button3",cancel_btt)
+	unsaved_popup.show()
 
 # close_nolook(self,window)
 # function will close the current window no matter what
-# BUG: This deletes the current window and leaves all other instances of Etext alone
-#		however after all Etext windows are closed the program continues to run.
+# BUG: This closes all elementary applications rather than the only the one window
 def close_nolook(self,window1):
 	#window1.delete()
 	elementary.exit()
-
 
 if __name__ == "__main__":
 	if len(sys.argv) == 1:
@@ -243,9 +266,5 @@ if __name__ == "__main__":
 	else:
 		application_start(sys.argv[1])
 
-    #Starts an elementary event loop which displays all elementary objects we've created.
-    # Our code stays at this point until elementary.exit() is called
 	elementary.run()
-
-    #Once elementary is done running lets shut everything off to finish the application
 	elementary.shutdown()

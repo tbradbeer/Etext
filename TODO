@@ -1,6 +1,4 @@
 ETEXT TODO
-- open_pressed needs the option to allow the user to save the current file if unsaved
-- Need to add * to title when file is unsaved
 - option to change font size and style
 - add keybindings
 - closing single instance should not close all elementary applications or other instances
