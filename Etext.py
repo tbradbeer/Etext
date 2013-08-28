@@ -144,10 +144,10 @@ def new_pressed(new_button,window1,textbox1):
 def save_pressed(save_button,window1,textbox1):
 	temp = textbox1.file_get();
 	if temp == (None,0):
-		saveas_pressed(save_button,window1,textbox1)
+		saveas_pressed(None,window1,textbox1)
 	else:
 		textbox1.file_save()
-		window1.title_set("Etext - "+temp)
+		window1.title_set("Etext - "+temp[0])
 		global file_is_saved
 		file_is_saved = True
 
@@ -158,7 +158,7 @@ def saveas_pressed(saveas_button,window1,textbox1):
 
 # saveas_file(Junk,file_selected,window,textbox,file_win)
 # this function will go through the steps of saving the file 		
-def saveas_file(junk,file_selected,window1,textbox1,file_win):
+def saveas_file(Junk,file_selected,window1,textbox1,file_win):
 	if file_selected != None:
 		open(file_selected,'w').close() # creates new file
 		tmp_text = textbox1.entry_get()
@@ -194,7 +194,7 @@ def about_pressed(about_button,window1):
 	about_popup.show()
 	
 # Simple function for changing the save state of the file
-def file_saved(self,window1):
+def file_saved(Junk,window1):
 	global file_is_saved
 	file_is_saved = False
 	temp = window1.title_get()
@@ -206,12 +206,12 @@ def file_saved(self,window1):
 def close_popup(button,popup1):
 	popup1.delete()
 
-# close_safely(self,window,textbox)
+# close_safely(junk,window,textbox)
 # function looks to make sure file has been saved and offers options to the user
 # if the current file has not been saved.
-def close_safely(self,window1,textbox1):
+def close_safely(Junk,window1,textbox1):
 	if file_is_saved:
-		close_nolook(self,window1)
+		close_nolook(None,window1)
 	else:
 		unsaved_popup(window1,textbox1,close_nolook)
 
@@ -263,7 +263,7 @@ def unsaved_popup(window1,textbox1,function1):
 # close_nolook(self,window)
 # function will close the current window no matter what
 # BUG: This closes all elementary applications rather than the only the one window
-def close_nolook(self,window1):
+def close_nolook(Junk,window1):
 	#window1.delete()
 	elementary.exit()
 
