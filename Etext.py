@@ -75,6 +75,12 @@ def application_start(fileName):
 	wordwrap_check.text = "Word Wrap"
 	wordwrap_check.callback_changed_add(wordwrap_pressed,window,textbox)
 	wordwrap_check.show()
+	
+	# Font Button
+	font_button = elementary.Button(window)
+	font_button.text = "Font"
+	font_button.callback_pressed_add(font_pressed,window,textbox)
+	font_button.show()
 
 	# About Button
 	about_button = elementary.Button(window)
@@ -92,6 +98,7 @@ def application_start(fileName):
 	top_menu.pack_end(save_button)
 	top_menu.pack_end(saveas_button)
 	top_menu.pack_end(wordwrap_check)
+	top_menu.pack_end(font_button)
 	top_menu.pack_end(about_button)
 
 	top_menu.show()
@@ -130,13 +137,19 @@ def open_file(Junk,file_selected,window1,textbox1,file_win):
 	file_win.delete()
 
 # new_pressed(Button,window,textbox)
-# clears the current file and starts a new blank one
+# looks to see if file is saved and acts accordingly
 def new_pressed(new_button,window1,textbox1):
 	global file_is_saved
 	if not file_is_saved:
-		unsaved_popup(window1,textbox1,saveas_pressed)
+		unsaved_popup(window1,textbox1,clear_window)
 	else:
-		textbox1.clear()
+		clear_window(window1,textbox1)
+
+# clear_window(window1,textbox1)
+# clears the window deleting the current file if one exists		
+def clear_window(window1,textbox1):
+	textbox1.entry_set('')
+	window1.title_set('Etext - Untitled')
 
 # save_pressed(Button,window,textbox)
 # saves the current textbox to file if the file has been specified if not warns
@@ -178,6 +191,59 @@ def wordwrap_pressed(wordwrap_check,window1,textbox1):
 		textbox1.line_wrap_set(True)
 	else:
 		textbox1.line_wrap_set(False)
+		
+# font_pressed(font_button,window,textbox)
+# creates a dialog which allows the user to change
+# the font size and style 
+def font_pressed(font_button,window1,textbox1):
+	# inner window to hold GUI for font
+	font_win = elementary.InnerWindow(window1)
+	font_win.show()
+	
+	# GenList for holding font options
+	font_list = elementary.Genlist(font_win)
+	font_list.show()
+	
+	# spinner to choose the font size
+	font_sizer = elementary.Spinner(font_win)
+	font_sizer.min_max_set(1,100)
+	font_sizer.show()
+	
+	# Label to hold simple text
+	font_demo = elementary.Label(font_win)
+	font_demo.text = 'the quick brown fox jumped over the lazy dog.0123456789'
+	font_demo.line_wrap_set(elementary.ELM_WRAP_WORD)
+	font_demo.show()
+	
+	# cancel and OK buttons
+	ok_button = elementary.Button(font_win)
+	ok_button.text = "OK"
+	ok_button.show()
+	cancel_button = elementary.Button(font_win)
+	cancel_button.text = "Cancel"
+	cancel_button.show()
+	
+	button_box = elementary.Box(font_win)
+	button_box.horizontal_set(True)
+	button_box.padding_set(0,0)
+	button_box.pack_end(cancel_button)
+	button_box.pack_end(ok_button)
+	button_box.show()
+	
+	full_box = elementary.Box(font_win)
+	full_box.size_hint_weight_set(evas.EVAS_HINT_EXPAND, evas.EVAS_HINT_EXPAND)
+	full_box.size_hint_align_set(evas.EVAS_HINT_FILL, evas.EVAS_HINT_FILL)
+	full_box.pack_end(font_list)
+	full_box.pack_end(font_sizer)
+	full_box.pack_end(font_demo)
+	full_box.pack_end(button_box)
+	full_box.show()
+	
+	font_win.content_set(full_box)
+	
+	#textbox_block = textbox1.textblock_get()
+	#textbox_block.text_markup_set('<font=FreeSerif:style=Regular>')
+	
 
 # about_pressed(Button,window1)
 # Shows pop-up with very basic information
@@ -211,7 +277,7 @@ def close_popup(button,popup1):
 # if the current file has not been saved.
 def close_safely(Junk,window1,textbox1):
 	if file_is_saved:
-		close_nolook(None,window1)
+		close_nolook(None,window1,None)
 	else:
 		unsaved_popup(window1,textbox1,close_nolook)
 
@@ -240,7 +306,7 @@ def unsaved_popup(window1,textbox1,function1):
 	# Close without saving button
 	clc_no_save_btt = elementary.Button(window1)
 	clc_no_save_btt.text = "Close Without Saving"
-	clc_no_save_btt.callback_clicked_add(function1,window1)
+	clc_no_save_btt.callback_clicked_add(function1,window1,textbox1)
 	# Save the file and then close button
 	clc_save_btt = elementary.FileselectorButton(window1)
 	clc_save_btt.expandable_set(False)
@@ -263,7 +329,7 @@ def unsaved_popup(window1,textbox1,function1):
 # close_nolook(self,window)
 # function will close the current window no matter what
 # BUG: This closes all elementary applications rather than the only the one window
-def close_nolook(Junk,window1):
+def close_nolook(Junk,window1,Junk2):
 	#window1.delete()
 	elementary.exit()
 
