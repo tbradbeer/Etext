@@ -1,7 +1,5 @@
 ETEXT TODO
-- option to change font size and style
-- add keybindings
-- closing single instance should not close all elementary applications or other instances
+- add keybindings (I think I need to wait for Elementary 1.8)
 - allow settings to be saved to file and read on startup
 - UI improvements (Currently very Ugly) (Possibly file tabs?)
 	- Cursor does not show in textbox

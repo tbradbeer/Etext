@@ -10,7 +10,7 @@ import evas
 import sys
 import os
 
-version = 0.10
+version = 0.45
 
 def application_start(fileName):
 	# Create the window title and boarder
@@ -32,7 +32,7 @@ def application_start(fileName):
 	textbox.callback_changed_user_add(file_saved,window)
 	textbox.scrollable_set(True) # creates scrollbars rather than enlarge window
 	textbox.line_wrap_set(False) # does not allow line wrap
-	textbox.autosave_set(False) # set to false to reduce disk IO
+	textbox.autosave_set(False) # set to false to reduce disk I/O
 	textbox.show()
 
 	if fileName != None:
@@ -92,7 +92,7 @@ def application_start(fileName):
 	top_menu = elementary.Box(window)
 	top_menu.horizontal_set(True)
 	top_menu.size_hint_weight_set(0, 0)
-	top_menu.size_hint_align_set(0, 0)
+	top_menu.size_hint_align_set(0.01, 0.01)
 	top_menu.pack_end(open_button)
 	top_menu.pack_end(new_button)
 	top_menu.pack_end(save_button)
@@ -194,56 +194,108 @@ def wordwrap_pressed(wordwrap_check,window1,textbox1):
 		
 # font_pressed(font_button,window,textbox)
 # creates a dialog which allows the user to change
-# the font size and style 
+# the font size and style. then changes the font
+# to the user selection 
 def font_pressed(font_button,window1,textbox1):
 	# inner window to hold GUI for font
 	font_win = elementary.InnerWindow(window1)
 	font_win.show()
 	
-	# GenList for holding font options
-	font_list = elementary.Genlist(font_win)
-	font_list.show()
+	# Entry to hold sample text
+	font_demo = elementary.Entry(font_win)
+	font_demo.editable_set(False)
+	font_demo.entry_set('Example: the quick brown fox jumped over the lazy dog. 0123456789')
+	font_demo.line_wrap_set(False)
+	font_demo.size_hint_weight_set(evas.EVAS_HINT_EXPAND, evas.EVAS_HINT_EXPAND)
+	font_demo.size_hint_align_set(evas.EVAS_HINT_FILL, evas.EVAS_HINT_FILL)
+	font_demo.show()
 	
 	# spinner to choose the font size
 	font_sizer = elementary.Spinner(font_win)
-	font_sizer.min_max_set(1,100)
+	font_sizer.min_max_set(10,100)
 	font_sizer.show()
 	
-	# Label to hold simple text
-	font_demo = elementary.Label(font_win)
-	font_demo.text = 'the quick brown fox jumped over the lazy dog.0123456789'
-	font_demo.line_wrap_set(elementary.ELM_WRAP_WORD)
-	font_demo.show()
+	# list of System fonts
+	fonts_raw = window1.evas.font_available_list()
+	fonts = []
+	for n in range(len(fonts_raw)):
+		tmp = fonts_raw[n].split(":")
+		fonts.append(tmp[0])
+	fonts = list(set(fonts))
+	fonts.sort()
+	
+	# GenList for holding font options
+	font_list = elementary.List(font_win)
+	font_list.size_hint_weight_set(evas.EVAS_HINT_EXPAND, evas.EVAS_HINT_EXPAND)
+	font_list.size_hint_align_set(evas.EVAS_HINT_FILL, evas.EVAS_HINT_FILL)
+	for i in range(len(fonts)):
+		font_list.item_append(fonts[i], None, None, font_demo_set, fonts[i], font_demo, font_sizer)
+	font_list.go()
+	font_list.show()
+	
+	# Label for Spinner
+	font_sizer_label = elementary.Label(font_win)
+	font_sizer_label.text = "Font Size:  "
+	font_sizer_label.show()
+	
+	size_box = elementary.Box(font_win)
+	size_box.horizontal_set(True)
+	size_box.pack_end(font_sizer_label)
+	size_box.pack_end(font_sizer)
+	size_box.show()
 	
 	# cancel and OK buttons
 	ok_button = elementary.Button(font_win)
 	ok_button.text = "OK"
+	ok_button.callback_pressed_add(font_set, font_list, font_sizer, textbox1, font_win)
 	ok_button.show()
+	
 	cancel_button = elementary.Button(font_win)
 	cancel_button.text = "Cancel"
+	cancel_button.callback_pressed_add(close_popup,font_win)
 	cancel_button.show()
 	
+	# box for buttons 
 	button_box = elementary.Box(font_win)
 	button_box.horizontal_set(True)
-	button_box.padding_set(0,0)
 	button_box.pack_end(cancel_button)
 	button_box.pack_end(ok_button)
 	button_box.show()
 	
+	# box for Entry (for spacing)
+	entry_box = elementary.Box(font_win)
+	entry_box.pack_end(font_demo)
+	entry_box.size_hint_weight_set(evas.EVAS_HINT_FILL,evas.EVAS_HINT_FILL)
+	entry_box.size_hint_weight_set(0.1,0.1)
+	entry_box.show()
+	
+	# box for everything
 	full_box = elementary.Box(font_win)
 	full_box.size_hint_weight_set(evas.EVAS_HINT_EXPAND, evas.EVAS_HINT_EXPAND)
 	full_box.size_hint_align_set(evas.EVAS_HINT_FILL, evas.EVAS_HINT_FILL)
 	full_box.pack_end(font_list)
-	full_box.pack_end(font_sizer)
-	full_box.pack_end(font_demo)
+	full_box.pack_end(size_box)
+	full_box.pack_end(entry_box)
 	full_box.pack_end(button_box)
 	full_box.show()
 	
 	font_win.content_set(full_box)
-	
-	#textbox_block = textbox1.textblock_get()
-	#textbox_block.text_markup_set('<font=FreeSerif:style=Regular>')
-	
+
+# font_demo_set(Junk1, Junk2, Font Selected, Font demo entry, font size spinner)	
+# This function will change the size and font of the demo text on the font window	
+def font_demo_set(Junk, Junk2, font_selected, font_demo, font_size):
+	style = "DEFAULT='color=#000 wrap=word left_margin=2 right_margin=2 font_source=/usr/share/elementary/themes/default.edj font_size="+str(font_size.value_get())+"00000 font="+font_selected+":style=Regular'em='+ font_style=Oblique'link='+ color=#800 underline=on underline_color=#8008'hilight='+ font_weight=Bold'preedit='+ underline=on underline_color=#000'preedit_sel='+ backing=on backing_color=#000 color=#FFFFFF'"
+	font_demo.textblock_get().style_set(style)
+
+# font_set(ok_button, font_list, font size spinner, textbox1, font window)
+# This function will change and the font and size of the text in the editor
+def font_set(ok_button, font_list, sizer, textbox1, font_win):
+	font_selected = font_list.selected_item_get().text_get()
+	font_size = sizer.value_get()
+	style = "DEFAULT='color=#000 wrap=word left_margin=2 right_margin=2 font_source=/usr/share/elementary/themes/default.edj font_size="+str(font_size)+"00000 font="+font_selected+":style=Regular'em='+ font_style=Oblique'link='+ color=#800 underline=on underline_color=#8008'hilight='+ font_weight=Bold'preedit='+ underline=on underline_color=#000'preedit_sel='+ backing=on backing_color=#000 color=#FFFFFF'"
+	textbox_block= textbox1.textblock_get()
+	textbox_block.style_set(style)
+	close_popup(None, font_win)
 
 # about_pressed(Button,window1)
 # Shows pop-up with very basic information
@@ -251,8 +303,7 @@ def about_pressed(about_button,window1):
 	about_popup = elementary.Popup(window1)
 	about_popup.part_text_set("title,text","Etext v"+str(version))
 	about_popup.part_text_set("default","<b>The Enlightened Text Editor</b><ps>\
-										By: Tyler Bradbeer<ps><ps>\
-										Etext is licensed under the GNU GPL v2")
+								By: Tyler Bradbeer<ps><ps>Etext is licensed under the GNU GPL v2")
 	close_button = elementary.Button(window1)
 	close_button.text = "OK"
 	close_button.callback_clicked_add(close_popup,about_popup)
@@ -328,7 +379,6 @@ def unsaved_popup(window1,textbox1,function1):
 
 # close_nolook(self,window)
 # function will close the current window no matter what
-# BUG: This closes all elementary applications rather than the only the one window
 def close_nolook(Junk,window1,Junk2):
 	#window1.delete()
 	elementary.exit()
