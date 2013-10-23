@@ -1,6 +1,5 @@
 ETEXT TODO
 - add keybindings (I think I need to wait for Elementary 1.8)
-- allow settings to be saved to file and read on startup
 - UI improvements (Currently very Ugly) (Possibly file tabs?)
 	- Cursor does not show in textbox
 - Line numbers (can wait until 1.1)

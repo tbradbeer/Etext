@@ -10,9 +10,9 @@ import evas
 import sys
 import os
 
-version = 0.45
+version = 0.70
 
-def application_start(fileName):
+def application_start(fileName,settings):
 	# Create the window title and boarder
 	window = elementary.StandardWindow("Etext", "Etext - Untitled")
 	window.show()
@@ -29,14 +29,17 @@ def application_start(fileName):
 	textbox = elementary.Entry(window)
 	textbox.size_hint_weight_set(evas.EVAS_HINT_EXPAND, evas.EVAS_HINT_EXPAND)
 	textbox.size_hint_align_set(evas.EVAS_HINT_FILL, evas.EVAS_HINT_FILL)
-	textbox.callback_changed_user_add(file_saved,window)
+	textbox.callback_changed_user_add(file_saved,window) # allows program to know when file is saved
 	textbox.scrollable_set(True) # creates scrollbars rather than enlarge window
-	textbox.line_wrap_set(False) # does not allow line wrap
+	textbox.line_wrap_set(False) # does not allow line wrap (can be changed by user)
 	textbox.autosave_set(False) # set to false to reduce disk I/O
 	textbox.show()
 
+	# If opened from command line or file manager with the intent of displaying a specific file
+	# display this file and change the window title to reflect the current file open.
 	if fileName != None:
 		textbox.file_set(fileName,elementary.ELM_TEXT_FORMAT_PLAIN_UTF8)
+		window.title_set("Etext - "+fileName)
 
 	# what to do when close request is sent
 	window.callback_delete_request_add(close_safely,window,textbox)
@@ -46,43 +49,43 @@ def application_start(fileName):
 	file_is_saved = True
 
 	# create a top menu (toolbar)
-	# open button
+	# open button (opens a file)
 	open_button = elementary.Button(window)
 	open_button.text = "Open"
 	open_button.callback_pressed_add(open_pressed,window,textbox)
 	open_button.show()
 
-	# clears the editor
+	# new button (clears the editor)
 	new_button = elementary.Button(window)
 	new_button.text = "New"
 	new_button.callback_pressed_add(new_pressed, window, textbox)
 	new_button.show()
 
-	# Save As Button 
+	# Save As Button (allows saving of new file)
 	saveas_button = elementary.Button(window)
 	saveas_button.text = "Save As"
 	saveas_button.callback_pressed_add(saveas_pressed,window,textbox)
 	saveas_button.show()
 
-	# Save Button
+	# Save Button (save changes to a file)
 	save_button = elementary.Button(window)
 	save_button.text = "Save"
 	save_button.callback_pressed_add(save_pressed,window,textbox)
 	save_button.show()
 
-	# Word Wrap toggle
+	# Word Wrap toggle (changes the state of word wrap)
 	wordwrap_check = elementary.Check(window)
 	wordwrap_check.text = "Word Wrap"
 	wordwrap_check.callback_changed_add(wordwrap_pressed,window,textbox)
 	wordwrap_check.show()
-	
-	# Font Button
+
+	# Font Button (allows user to change the font size and type)
 	font_button = elementary.Button(window)
 	font_button.text = "Font"
 	font_button.callback_pressed_add(font_pressed,window,textbox)
 	font_button.show()
 
-	# About Button
+	# About Button (displays about popup)
 	about_button = elementary.Button(window)
 	about_button.text = "About"
 	about_button.callback_pressed_add(about_pressed,window)
@@ -113,9 +116,17 @@ def application_start(fileName):
 	full_package.pack_end(textbox)
 
 	full_package.show()
-
 	window.resize_object_add(full_package)
-	window.resize(600,400)
+	
+	# this applies the user settings saved to a file to the open instance of Etext.
+	if settings is not None:
+		location = eval(settings[0])
+		size = eval(settings[1])
+		window.move(location[0],location[1])
+		window.resize(size[0],size[1])
+		textbox.textblock_get().style_set(settings[2])
+	else:
+		window.resize(600,400)
 
 # open_pressed(Button,window,textbox)
 # makes sure the current file has been saved. If it has it will proceed
@@ -127,8 +138,8 @@ def open_pressed(open_button,window1,textbox1):
 	else:
 		file_chooser(window1,textbox1,False,open_file)
 
-# open_file(Crap,file_selected,window,textbox,file_win)
-# this takes the output form the file_chooser widget and displays the file 
+# open_file(Button,file_selected,window,textbox,file_win)
+# this takes the output form the file_chooser widget and displays the file
 def open_file(Junk,file_selected,window1,textbox1,file_win):
 	if file_selected != None:
 		textbox1.file_set(file_selected,elementary.ELM_TEXT_FORMAT_PLAIN_UTF8)
@@ -137,7 +148,8 @@ def open_file(Junk,file_selected,window1,textbox1,file_win):
 	file_win.delete()
 
 # new_pressed(Button,window,textbox)
-# looks to see if file is saved and acts accordingly
+# looks to see if file is saved. If file is unsaved presents user with options.
+# If file is saved will clear the editor
 def new_pressed(new_button,window1,textbox1):
 	global file_is_saved
 	if not file_is_saved:
@@ -146,14 +158,15 @@ def new_pressed(new_button,window1,textbox1):
 		clear_window(window1,textbox1)
 
 # clear_window(window1,textbox1)
-# clears the window deleting the current file if one exists		
+# will replace the contents of the window with an empty string and reset the window
+# title to "Untitled"
 def clear_window(window1,textbox1):
 	textbox1.entry_set('')
 	window1.title_set('Etext - Untitled')
 
 # save_pressed(Button,window,textbox)
-# saves the current textbox to file if the file has been specified if not warns
-# user and instructs them to use the saveas button
+# saves the current textbox to file if the file has been specified, if the file has not
+# been saved this function will call the saveas_pressed function to save the file.
 def save_pressed(save_button,window1,textbox1):
 	temp = textbox1.file_get();
 	if temp == (None,0):
@@ -165,12 +178,13 @@ def save_pressed(save_button,window1,textbox1):
 		file_is_saved = True
 
 # saveas_pressed(saveas_button,window,textbox)
-# this function is only used because I have to call it in 2 places
+# opens a file_chooser widget in saveas mode. Mainly written as a convenience function.
 def saveas_pressed(saveas_button,window1,textbox1):
 	file_chooser(window1,textbox1,True,saveas_file)
 
 # saveas_file(Junk,file_selected,window,textbox,file_win)
-# this function will go through the steps of saving the file 		
+# this function will go through the steps of saving a new file. It creates a new file
+# and then fills it with the contents of the Entry box.
 def saveas_file(Junk,file_selected,window1,textbox1,file_win):
 	if file_selected != None:
 		open(file_selected,'w').close() # creates new file
@@ -191,16 +205,15 @@ def wordwrap_pressed(wordwrap_check,window1,textbox1):
 		textbox1.line_wrap_set(True)
 	else:
 		textbox1.line_wrap_set(False)
-		
+
 # font_pressed(font_button,window,textbox)
-# creates a dialog which allows the user to change
-# the font size and style. then changes the font
-# to the user selection 
+# creates a dialog which displays the fonts available on the system and
+# allows them to choose the font and size the editor will use.
 def font_pressed(font_button,window1,textbox1):
 	# inner window to hold GUI for font
 	font_win = elementary.InnerWindow(window1)
 	font_win.show()
-	
+
 	# Entry to hold sample text
 	font_demo = elementary.Entry(font_win)
 	font_demo.editable_set(False)
@@ -209,21 +222,23 @@ def font_pressed(font_button,window1,textbox1):
 	font_demo.size_hint_weight_set(evas.EVAS_HINT_EXPAND, evas.EVAS_HINT_EXPAND)
 	font_demo.size_hint_align_set(evas.EVAS_HINT_FILL, evas.EVAS_HINT_FILL)
 	font_demo.show()
-	
+
 	# spinner to choose the font size
 	font_sizer = elementary.Spinner(font_win)
 	font_sizer.min_max_set(10,100)
 	font_sizer.show()
-	
+
 	# list of System fonts
 	fonts_raw = window1.evas.font_available_list()
 	fonts = []
 	for n in range(len(fonts_raw)):
 		tmp = fonts_raw[n].split(":")
 		fonts.append(tmp[0])
+	# for some strange reason many fonts are displayed multiple times. The following lines remove
+	# all duplicates and then sort them alphabetically.
 	fonts = list(set(fonts))
 	fonts.sort()
-	
+
 	# GenList for holding font options
 	font_list = elementary.List(font_win)
 	font_list.size_hint_weight_set(evas.EVAS_HINT_EXPAND, evas.EVAS_HINT_EXPAND)
@@ -232,43 +247,43 @@ def font_pressed(font_button,window1,textbox1):
 		font_list.item_append(fonts[i], None, None, font_demo_set, fonts[i], font_demo, font_sizer)
 	font_list.go()
 	font_list.show()
-	
+
 	# Label for Spinner
 	font_sizer_label = elementary.Label(font_win)
 	font_sizer_label.text = "Font Size:  "
 	font_sizer_label.show()
-	
+
 	size_box = elementary.Box(font_win)
 	size_box.horizontal_set(True)
 	size_box.pack_end(font_sizer_label)
 	size_box.pack_end(font_sizer)
 	size_box.show()
-	
+
 	# cancel and OK buttons
 	ok_button = elementary.Button(font_win)
 	ok_button.text = "OK"
 	ok_button.callback_pressed_add(font_set, font_list, font_sizer, textbox1, font_win)
 	ok_button.show()
-	
+
 	cancel_button = elementary.Button(font_win)
 	cancel_button.text = "Cancel"
 	cancel_button.callback_pressed_add(close_popup,font_win)
 	cancel_button.show()
-	
-	# box for buttons 
+
+	# box for buttons
 	button_box = elementary.Box(font_win)
 	button_box.horizontal_set(True)
 	button_box.pack_end(cancel_button)
 	button_box.pack_end(ok_button)
 	button_box.show()
-	
+
 	# box for Entry (for spacing)
 	entry_box = elementary.Box(font_win)
 	entry_box.pack_end(font_demo)
 	entry_box.size_hint_weight_set(evas.EVAS_HINT_FILL,evas.EVAS_HINT_FILL)
 	entry_box.size_hint_weight_set(0.1,0.1)
 	entry_box.show()
-	
+
 	# box for everything
 	full_box = elementary.Box(font_win)
 	full_box.size_hint_weight_set(evas.EVAS_HINT_EXPAND, evas.EVAS_HINT_EXPAND)
@@ -278,11 +293,11 @@ def font_pressed(font_button,window1,textbox1):
 	full_box.pack_end(entry_box)
 	full_box.pack_end(button_box)
 	full_box.show()
-	
+
 	font_win.content_set(full_box)
 
-# font_demo_set(Junk1, Junk2, Font Selected, Font demo entry, font size spinner)	
-# This function will change the size and font of the demo text on the font window	
+# font_demo_set(Junk1, Junk2, Font Selected, Font demo entry, font size spinner)
+# This function will change the size and font of the demo text in the font window.
 def font_demo_set(Junk, Junk2, font_selected, font_demo, font_size):
 	style = "DEFAULT='color=#000 wrap=word left_margin=2 right_margin=2 font_source=/usr/share/elementary/themes/default.edj font_size="+str(font_size.value_get())+"00000 font="+font_selected+":style=Regular'em='+ font_style=Oblique'link='+ color=#800 underline=on underline_color=#8008'hilight='+ font_weight=Bold'preedit='+ underline=on underline_color=#000'preedit_sel='+ backing=on backing_color=#000 color=#FFFFFF'"
 	font_demo.textblock_get().style_set(style)
@@ -298,7 +313,7 @@ def font_set(ok_button, font_list, sizer, textbox1, font_win):
 	close_popup(None, font_win)
 
 # about_pressed(Button,window1)
-# Shows pop-up with very basic information
+# Shows pop-up with very basic information about Etext
 def about_pressed(about_button,window1):
 	about_popup = elementary.Popup(window1)
 	about_popup.part_text_set("title,text","Etext v"+str(version))
@@ -309,7 +324,7 @@ def about_pressed(about_button,window1):
 	close_button.callback_clicked_add(close_popup,about_popup)
 	about_popup.part_content_set("button1",close_button)
 	about_popup.show()
-	
+
 # Simple function for changing the save state of the file
 def file_saved(Junk,window1):
 	global file_is_saved
@@ -328,13 +343,13 @@ def close_popup(button,popup1):
 # if the current file has not been saved.
 def close_safely(Junk,window1,textbox1):
 	if file_is_saved:
-		close_nolook(None,window1,None)
+		close_nolook(None,window1,textbox1)
 	else:
 		unsaved_popup(window1,textbox1,close_nolook)
 
 # file_choser(window,textbox,save_mode <bool>,function)
-# I wrote this because the FileselectorButton does not have enough options
-# it offers the same basic functions but has more options available 
+# I wrote this because the FileselectorButton does not allow control of when the file selector
+# pops up. This allows me to place a popup before the file selection process begins.
 def file_chooser(window1,textbox1,save_mode,function):
 	file_win = elementary.InnerWindow(window1)
 	file_stuff = elementary.Fileselector(file_win)
@@ -348,12 +363,13 @@ def file_chooser(window1,textbox1,save_mode,function):
 	file_win.show()
 
 # unsaved_popup(window,textbox,function)
-#produces a pop-up which provides options on what to do because the file has not been saved 
+# produces a pop-up which provides options on what to do because the file has not been saved
 def unsaved_popup(window1,textbox1,function1):
 	# Create popup
 	unsaved_popup = elementary.Popup(window1)
 	unsaved_popup.part_text_set("title,text","File Unsaved!")
-	unsaved_popup.part_text_set("default","The current file has not been saved.<ps> what would you like to do?")
+	unsaved_popup.part_text_set("default","The current file has not been saved.<ps>\
+														 what would you like to do?")
 	# Close without saving button
 	clc_no_save_btt = elementary.Button(window1)
 	clc_no_save_btt.text = "Close Without Saving"
@@ -378,16 +394,44 @@ def unsaved_popup(window1,textbox1,function1):
 	unsaved_popup.show()
 
 # close_nolook(self,window)
-# function will close the current window no matter what
-def close_nolook(Junk,window1,Junk2):
-	#window1.delete()
+# function will close the current window no matter what. This function will also write some settings
+# to a file so that they can be used next time. These settings are the location of the editor on the
+# screen, the size of the editor window and the font size and style. 
+def close_nolook(Junk,window1,textbox1):
+	os.remove(os.path.expanduser('~')+"/.e/e/applications/Etext/settings")
+	f = open(os.path.expanduser('~')+"/.e/e/applications/Etext/settings",'w')
+	f.write(str(window1.screen_position_get())+'\n')
+	f.write(str(window1.size_get())+'\n')
+	f.write(str(textbox1.textblock_get().style_get())+'\n')
 	elementary.exit()
 
+# This function reads the user settings from the settings file and puts them in a list. 
+def read_settings():
+	f = open(os.path.expanduser('~')+"/.e/e/applications/Etext/settings",'r')
+	settings = []
+	for i in range(3):
+		settings.append(f.readline().strip())
+	return settings
+
+# this is the main command that runs the entire program
 if __name__ == "__main__":
-	if len(sys.argv) == 1:
-		application_start(None)
-	else:
-		application_start(sys.argv[1])
+	# The first conditional determines if the file was opened in the program from the command line
+	# The second conditional determines if a settings file exists.
+	isFile = len(sys.argv) == 2
+	isSettings = os.path.exists(os.path.expanduser('~')+"/.e/e/applications/Etext/settings")
+	
+	# This little clusterf@#! of if statements deals with all of the possibilities involving
+	# settings and files opened 
+	if isFile and isSettings:
+		settings = read_settings()
+		application_start(sys.argv[1],settings)
+	elif isFile and not isSettings:
+		application_start(sys.argv[1],None)
+	elif not isFile and isSettings:
+		settings = read_settings()
+		application_start(None,settings)
+	else: # not isFile and not isSettings
+		application_start(None,None)
 
 	elementary.run()
 	elementary.shutdown()
