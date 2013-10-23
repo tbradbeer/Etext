@@ -10,7 +10,7 @@ import evas
 import sys
 import os
 
-version = 0.70
+version = 0.701
 
 def application_start(fileName,settings):
 	# Create the window title and boarder
@@ -398,7 +398,10 @@ def unsaved_popup(window1,textbox1,function1):
 # to a file so that they can be used next time. These settings are the location of the editor on the
 # screen, the size of the editor window and the font size and style. 
 def close_nolook(Junk,window1,textbox1):
-	os.remove(os.path.expanduser('~')+"/.e/e/applications/Etext/settings")
+	if not os.path.exists(os.path.expanduser('~')+"/.e/e/applications/Etext/settings"):
+		os.makedirs(os.path.expanduser('~')+"/.e/e/applications/Etext/")
+	else:
+		os.remove(os.path.expanduser('~')+"/.e/e/applications/Etext/settings")
 	f = open(os.path.expanduser('~')+"/.e/e/applications/Etext/settings",'w')
 	f.write(str(window1.screen_position_get())+'\n')
 	f.write(str(window1.size_get())+'\n')
