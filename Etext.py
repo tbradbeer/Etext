@@ -10,9 +10,20 @@ import evas
 import sys
 import os
 
-version = 0.701
+version = 0.702
 
 def application_start(fileName,settings):
+	# saved state of the file
+	global file_is_saved
+	file_is_saved = True
+
+	# takes settings from file or uses default ones
+	global style
+	if settings is not None:
+		style = settings
+	else:
+		style = "DEFAULT='color=#000 left_margin=2 right_margin=2 font_source=/usr/share/elementary/themes/default.edj font_size=10.000000 font=Sans:style=Regular'em='+ font_style=Oblique'link='+ color=#800 underline=on underline_color=#8008'hilight='+ font_weight=Bold'preedit='+ underline=on underline_color=#000'preedit_sel='+ backing=on backing_color=#000 color=#FFFFFF'"
+
 	# Create the window title and boarder
 	window = elementary.StandardWindow("Etext", "Etext - Untitled")
 	window.show()
@@ -44,9 +55,8 @@ def application_start(fileName,settings):
 	# what to do when close request is sent
 	window.callback_delete_request_add(close_safely,window,textbox)
 
-	# saved state of the file
-	global file_is_saved
-	file_is_saved = True
+	# window keybindings
+	window.elm_event_callback_add(keybind,window,textbox)
 
 	# create a top menu (toolbar)
 	# open button (opens a file)
@@ -117,16 +127,38 @@ def application_start(fileName,settings):
 
 	full_package.show()
 	window.resize_object_add(full_package)
-	
-	# this applies the user settings saved to a file to the open instance of Etext.
-	if settings is not None:
-		location = eval(settings[0])
-		size = eval(settings[1])
-		window.move(location[0],location[1])
-		window.resize(size[0],size[1])
-		textbox.textblock_get().style_set(settings[2])
-	else:
-		window.resize(600,400)
+
+	tmp = textbox.textblock_get().style_set(style)
+	window.resize(600,400)
+
+	print textbox.content_get()
+
+def keybind(obj,src_obj,event_type,event,window,textbox):
+	global ctrlPressed
+	ctrlPressed = False
+	global altPressed
+	altPressed = False
+	if event_type == evas.EVAS_CALLBACK_KEY_DOWN:
+		if event.keyname is "Control_L" or "Control_R":
+			ctrlPressed = True
+		if event.keyname is "Alt_L" or "Alt_R":
+			shiftPressed = True
+		if ctrlPressed and event.keyname == "s":
+			save_pressed(None,window,textbox)
+			ctrlPressed == False
+		if ctrlPressed and event.keyname == "o":
+			open_pressed(None,window,textbox)
+			ctrlPressed == False
+		if ctrlPressed and event.keyname == "n":
+			new_pressed(None,window,textbox)
+			ctrlPressed == False
+		if ctrlPressed and event.keyname == "q":
+			close_safely(None,window,textbox)
+			ctrlPressed == False
+		if ctrlPressed and altPressed and event.keyname == "s":
+			saveas_pressed(None,window,textbox)
+			ctrlPressed == False
+			altPressed == False
 
 # open_pressed(Button,window,textbox)
 # makes sure the current file has been saved. If it has it will proceed
@@ -307,31 +339,35 @@ def font_demo_set(Junk, Junk2, font_selected, font_demo, font_size):
 def font_set(ok_button, font_list, sizer, textbox1, font_win):
 	font_selected = font_list.selected_item_get().text_get()
 	font_size = sizer.value_get()
-	style = "DEFAULT='color=#000 wrap=word left_margin=2 right_margin=2 font_source=/usr/share/elementary/themes/default.edj font_size="+str(font_size)+"00000 font="+font_selected+":style=Regular'em='+ font_style=Oblique'link='+ color=#800 underline=on underline_color=#8008'hilight='+ font_weight=Bold'preedit='+ underline=on underline_color=#000'preedit_sel='+ backing=on backing_color=#000 color=#FFFFFF'"
-	textbox_block= textbox1.textblock_get()
-	textbox_block.style_set(style)
+	global style
+	style = "DEFAULT='color=#left_margin 000=2 right_margin=2 font_source=/usr/share/elementary/themes/default.edj font_size="+str(font_size)+"00000 font="+font_selected+":style=Regular'em='+ font_style=Oblique'link='+ color=#800 underline=on underline_color=#8008'hilight='+ font_weight=Bold'preedit='+ underline=on underline_color=#000'preedit_sel='+ backing=on backing_color=#000 color=#FFFFFF'"
+	textbox1.textblock_get().style_set(style)
 	close_popup(None, font_win)
 
 # about_pressed(Button,window1)
 # Shows pop-up with very basic information about Etext
 def about_pressed(about_button,window1):
 	about_popup = elementary.Popup(window1)
+	about_popup.size_hint_weight_set(evas.EVAS_HINT_EXPAND,evas.EVAS_HINT_EXPAND)
 	about_popup.part_text_set("title,text","Etext v"+str(version))
-	about_popup.part_text_set("default","<b>The Enlightened Text Editor</b><ps>\
-								By: Tyler Bradbeer<ps><ps>Etext is licensed under the GNU GPL v2")
+	about_popup.text = "<b>The Enlightened Text Editor</b><ps>By: Tyler Bradbeer<ps><ps>Etext is licensed under the GNU GPL v2"
+
 	close_button = elementary.Button(window1)
 	close_button.text = "OK"
 	close_button.callback_clicked_add(close_popup,about_popup)
 	about_popup.part_content_set("button1",close_button)
+
 	about_popup.show()
 
 # Simple function for changing the save state of the file
-def file_saved(Junk,window1):
+def file_saved(textbox,window1):
 	global file_is_saved
 	file_is_saved = False
 	temp = window1.title_get()
 	if not temp[0] == '*':
 		window1.title_set('*'+temp)
+	global style
+	textbox.textblock_get().style_set(style)
 
 # close_popup(button,popup)
 # simple function to close any popup
@@ -368,12 +404,12 @@ def unsaved_popup(window1,textbox1,function1):
 	# Create popup
 	unsaved_popup = elementary.Popup(window1)
 	unsaved_popup.part_text_set("title,text","File Unsaved!")
-	unsaved_popup.part_text_set("default","The current file has not been saved.<ps>\
-														 what would you like to do?")
+	unsaved_popup.text = "The current file has not been saved.<ps>what would you like to do?"
 	# Close without saving button
 	clc_no_save_btt = elementary.Button(window1)
 	clc_no_save_btt.text = "Close Without Saving"
 	clc_no_save_btt.callback_clicked_add(function1,window1,textbox1)
+	clc_no_save_btt.show()
 	# Save the file and then close button
 	clc_save_btt = elementary.FileselectorButton(window1)
 	clc_save_btt.expandable_set(False)
@@ -383,38 +419,38 @@ def unsaved_popup(window1,textbox1,function1):
 		clc_save_btt.path_set(textbox1.file_get()[0])
 	clc_save_btt.callback_file_chosen_add(saveas_file,None,window1,textbox1)
 	clc_save_btt.text = "Save File"
+	clc_save_btt.show()
 	# cancel close request
 	cancel_btt = elementary.Button(window1)
 	cancel_btt.text = "Cancel"
 	cancel_btt.callback_clicked_add(close_popup,unsaved_popup)
+	cancel_btt.show()
 	# add buttons to popup
 	unsaved_popup.part_content_set("button1",clc_no_save_btt)
 	unsaved_popup.part_content_set("button2",clc_save_btt)
 	unsaved_popup.part_content_set("button3",cancel_btt)
 	unsaved_popup.show()
 
-# close_nolook(self,window)
+# close_nolook(self,textbox)
 # function will close the current window no matter what. This function will also write some settings
 # to a file so that they can be used next time. These settings are the location of the editor on the
-# screen, the size of the editor window and the font size and style. 
+# screen, the size of the editor window and the font size and style.
 def close_nolook(Junk,window1,textbox1):
 	if not os.path.exists(os.path.expanduser('~')+"/.e/e/applications/Etext/settings"):
 		os.makedirs(os.path.expanduser('~')+"/.e/e/applications/Etext/")
 	else:
 		os.remove(os.path.expanduser('~')+"/.e/e/applications/Etext/settings")
 	f = open(os.path.expanduser('~')+"/.e/e/applications/Etext/settings",'w')
-	f.write(str(window1.screen_position_get())+'\n')
-	f.write(str(window1.size_get())+'\n')
-	f.write(str(textbox1.textblock_get().style_get())+'\n')
+	global style
+	f.write(style)
 	elementary.exit()
 
-# This function reads the user settings from the settings file and puts them in a list. 
+# This function reads the user settings from the settings file and puts them in a list.
 def read_settings():
 	f = open(os.path.expanduser('~')+"/.e/e/applications/Etext/settings",'r')
-	settings = []
-	for i in range(3):
-		settings.append(f.readline().strip())
-	return settings
+	global style
+	style = f.readline().strip()
+	return style
 
 # this is the main command that runs the entire program
 if __name__ == "__main__":
@@ -422,9 +458,9 @@ if __name__ == "__main__":
 	# The second conditional determines if a settings file exists.
 	isFile = len(sys.argv) == 2
 	isSettings = os.path.exists(os.path.expanduser('~')+"/.e/e/applications/Etext/settings")
-	
+
 	# This little clusterf@#! of if statements deals with all of the possibilities involving
-	# settings and files opened 
+	# settings and files opened
 	if isFile and isSettings:
 		settings = read_settings()
 		application_start(sys.argv[1],settings)
